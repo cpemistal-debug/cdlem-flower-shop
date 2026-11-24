@@ -114,18 +114,23 @@
         </section>
       </main>
     } @else if (adminAccess() === 'checking' || adminAccess() === 'checking-access') {
-      <main class="admin-login"><p role="status">Checking administrator access…</p></main>
+      <main class="admin-login admin-login-status">
+        <span class="admin-spinner" aria-hidden="true"></span>
+        <p role="status">Checking administrator access…</p>
+      </main>
     } @else if (adminAccess() === 'signed-out') {
       <main class="admin-login">
-        <p class="eyebrow">CDLEM Florists · Seller portal</p>
-        <h1>Administrator sign in</h1>
-        <p>Use the email and password for your enabled Firebase administrator account.</p>
-        <form (submit)="adminLogin($event)">
+        <div class="admin-login-heading">
+          <p class="eyebrow">CDLEM Florists · Seller portal</p>
+          <h1>Admin<br>sign in</h1>
+          <p class="admin-login-copy">Sign in with your enabled Firebase administrator account.</p>
+        </div>
+        <form class="admin-login-form" (submit)="adminLogin($event)">
           <label>Email
-            <input type="email" name="adminEmail" autocomplete="username" required [(ngModel)]="adminEmail">
+            <input type="email" name="adminEmail" placeholder="admin@cdlem.com" autocomplete="username" required [(ngModel)]="adminEmail">
           </label>
           <label>Password
-            <input type="password" name="adminPassword" autocomplete="current-password" required [(ngModel)]="adminPassword">
+            <input type="password" name="adminPassword" placeholder="Enter your password" autocomplete="current-password" required [(ngModel)]="adminPassword">
           </label>
           @if (adminError()) { <p class="form-error" role="alert">{{ adminError() }}</p> }
           <button class="btn primary full" type="submit">Sign in</button>
