@@ -1,0 +1,18 @@
+:root {
+  --plum: #2e1a33;
+  --peony: #c23b6b;
+  --petal: #f6d5de;
+  --leaf: #355e3b;
+  --paper: #fffcfa;
+  --mist: #f4eef1;
+  --ink: #241629;
+  --muted: #6d5f72;
+  --radius: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Poppins', system-ui, sans-serif; color: var(--ink); background: linear-gradient(135deg, #fffaf7 0%, #f7edf2 55%, #edf4eb 100%); line-height: 1.6; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--peony); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }

@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admin/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admin/$(request.auth.uid)).data.role == 'admin'
+        && get(/databases/$(database)/documents/admin/$(request.auth.uid)).data.enabled == true;
+    }
+
+    function validProfile() {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'fullName', 'fullAddress', 'contactNumbers', 'email', 'createdAt', 'updatedAt'
+        ])
+        && data.fullName is string
+        && data.fullName.size() > 0
+        && data.fullName.size() <= 120
+        && data.fullAddress is string
+        && data.fullAddress.size() >= 5
+        && data.fullAddress.size() <= 500
+        && data.contactNumbers is map
+        && data.contactNumbers.keys().hasAll(['primary', 'secondary'])
+        && data.contactNumbers.keys().hasOnly(['primary', 'secondary'])
+        && data.contactNumbers.primary is string
+        && data.contactNumbers.primary.size() >= 7
+        && data.contactNumbers.primary.size() <= 25
+        && data.contactNumbers.secondary is string
+        && data.contactNumbers.secondary.size() >= 7
+        && data.contactNumbers.secondary.size() <= 25
+        && data.email == request.auth.token.email
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validProduct(productId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'name', 'category', 'price', 'stock', 'emoji', 'image',
+          'popular', 'recent', 'updatedAt'
+        ])
+        && data.name is string
+        && data.name == productId
+        && data.category in ['Flower', 'Bouquet Flowers', 'Potted Flowers']
+        && data.price is number
+        && data.price >= 0
+        && data.stock is int
+        && data.stock >= 0
+        && data.emoji is string
+        && data.image is string
+        && data.popular is bool
+        && data.recent is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function validOrderCreate() {
+      let data = request.resource.data;
+      return request.auth != null
+        && data.keys().hasOnly([
+          'customerUid', 'customerName', 'fullAddress', 'contactNumbers',
+          'items', 'total', 'status', 'estimatedDuration', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasAll([
+          'customerUid', 'customerName', 'fullAddress', 'contactNumbers',
+          'items', 'total', 'status', 'estimatedDuration', 'createdAt', 'updatedAt'
+        ])
+        && data.customerUid == request.auth.uid
+        && data.customerName is string
+        && data.customerName.size() > 0
+        && data.customerName.size() <= 120
+        && data.fullAddress is string
+        && data.fullAddress.size() >= 5
+        && data.fullAddress.size() <= 500
+        && data.contactNumbers is map
+        && data.contactNumbers.keys().hasAll(['primary', 'secondary'])
+        && data.contactNumbers.keys().hasOnly(['primary', 'secondary'])
+        && data.contactNumbers.primary is string
+        && data.contactNumbers.primary.size() >= 7
+        && data.contactNumbers.primary.size() <= 25
+        && data.contactNumbers.secondary is string
+        && data.contactNumbers.secondary.size() >= 7
+        && data.contactNumbers.secondary.size() <= 25
+        && data.items is list
+        && data.items.size() > 0
+        && data.items.size() <= 30
+        && data.total is number
+        && data.total >= 0
+        && data.status == 'pending'
+        && data.estimatedDuration == ''
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validOrderAdminUpdate() {
+      let data = request.resource.data;
+      return data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'estimatedDuration', 'updatedAt'
+        ])
+        && data.status in ['pending', 'preparing', 'picking-up', 'delivering', 'received']
+        && data.estimatedDuration is string
+        && data.estimatedDuration.size() <= 80
+        && data.updatedAt is timestamp;
+    }
+
+    match /admin/{uid} {
+      allow get: if signedInAs(uid);
+      allow list, create, update, delete: if false;
+    }
+
+    match /users/{uid} {
+      allow get, list: if signedInAs(uid);
+      allow create, update: if signedInAs(uid) && validProfile();
+      allow delete: if false;
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validProduct(productId);
+      allow delete: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow create: if validOrderCreate();
+      allow get, list: if isAdmin()
+        || (request.auth != null && resource.data.customerUid == request.auth.uid);
+      allow update: if isAdmin() && validOrderAdminUpdate();
+      allow delete: if false;
+    }
+  }
+}

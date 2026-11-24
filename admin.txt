@@ -1,0 +1,78 @@
+CDLEM FLORISTS ADMIN ACCOUNT SETUP
+
+ADMIN SIGN-IN
+1. In Firebase Console, open Authentication and enable the Email/Password provider.
+2. Create the administrator account in Firebase Authentication. Do not put its password in this file or in Firestore.
+3. Copy the account's Firebase Authentication UID.
+4. In Firestore Database, create a collection named "admin".
+5. Create a document in "admin" whose document ID is exactly the Authentication UID.
+   Collection path: /admin
+   Document path:   /admin/{FIREBASE_AUTH_UID}
+6. Add these fields:
+   role       string   admin
+   enabled    boolean  true
+   email      string   the same email as the Authentication account
+   displayName string  administrator's name (optional)
+   Example document path: /admin/your-firebase-auth-uid
+   Example document data:
+   {
+     "role": "admin",
+     "enabled": true,
+     "email": "admin@example.com",
+     "displayName": "Shop Administrator"
+   }
+7. Open /cdlem-admin and sign in with that Firebase Authentication email and password.
+   The app grants dashboard access only when admin/{UID} exists, role is "admin",
+   and enabled is true.
+
+CUSTOMER GOOGLE SIGN-IN
+Enable the Google provider under Firebase Authentication > Sign-in method.
+After a customer signs in with Google, the app requests their full name, full
+address, and two contact numbers. It saves the profile to users/{UID}:
+   fullName
+   fullAddress
+   contactNumbers.primary
+   contactNumbers.secondary
+   email
+   createdAt
+   updatedAt
+
+FIRESTORE SECURITY RULES
+The project includes firestore.rules. Deploy it with:
+   firebase deploy --only firestore:rules
+
+Administrator documents must be created or updated in Firebase Console by a
+trusted project owner. Client-side writes to the admin collection are denied.
+
+PRODUCT PRICE, STOCK, AND CATALOG
+When an enabled administrator opens the seller dashboard, it synchronizes the
+Firestore "products" collection with the current products and images in
+public/images. Product document IDs are the exact product names, not numbers.
+For example:
+   Collection path: /products
+   Document path:   /products/Rose Bouquet
+   Document field:  name = "Rose Bouquet"
+
+The first synchronization moves price and stock to the new name-based documents
+when it can match an existing product by its image path. It creates documents
+for new catalog items and removes old product documents that are not in the
+current image-based catalog. Deploy the updated firestore.rules before opening
+the dashboard so the administrator can create, update, and remove products.
+
+Use the dashboard's Save button to update a product's price and stock. Changes
+are saved to Firestore and appear in the storefront for connected visitors.
+Product reads are public; only an enabled administrator can create, edit, or
+delete product documents.
+
+CUSTOMER ORDERS
+Customers with a completed Google profile can place an order from the cart.
+The storefront does not process payments. New orders are saved in /orders with
+the customer's name, delivery address, contact numbers, item quantities, and
+order total. Customers can view their progress in the Account section.
+
+The seller dashboard's Orders section lists orders and lets an enabled
+administrator update progress to Pending / confirming, Preparing, Picking up,
+Delivering, or Order received. The administrator can also enter a delivery
+duration such as "2 hours". Updates appear live in the customer's Account
+section. Deploy the updated firestore.rules to enable customer order creation
+and owner-only reads, plus administrator order updates.

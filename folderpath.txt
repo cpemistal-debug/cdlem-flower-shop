@@ -1,0 +1,36 @@
+my-angular-app/
+├── .angular/                  # CLI cache & build artifacts (gitignored)
+├── node_modules/              # Installed npm dependencies
+├── public/                    # Static assets served at root "/" by default
+│   ├── favicon.ico
+│   ├── images/
+│   │   └── logo.svg
+│   └── fonts/
+├── src/
+│   ├── app/
+│   │   ├── core/              # App-wide singletons: auth, guards, interceptors, layout
+│   │   │   ├── guards/
+│   │   │   ├── interceptors/
+│   │   │   └── services/
+│   │   ├── shared/            # Reusable UI components, pipes, directives, models
+│   │   │   ├── components/
+│   │   │   ├── directives/
+│   │   │   ├── models/
+│   │   │   └── pipes/
+│   │   ├── features/          # Domain/page modules or standalone feature routes
+│   │   │   └── dashboard/
+│   │   │       ├── components/
+│   │   │       ├── pages/
+│   │   │       └── services/
+│   │   ├── app.ts             # Root component (or app.component.ts)
+│   │   ├── app.html           # Root template
+│   │   ├── app.css            # Root styles (or .scss)
+│   │   ├── app.config.ts      # App providers & configuration
+│   │   └── app.routes.ts      # Top-level route definitions
+│   ├── index.html             # Main HTML shell
+│   ├── main.ts                # Application entry point
+│   └── styles.css             # Global styles
+├── angular.json               # CLI build, serve, test, and asset configuration
+├── package.json               # Scripts and dependencies
+├── tsconfig.json              # Base TypeScript config
+└── tsconfig.app.json          # App-specific TypeScript config

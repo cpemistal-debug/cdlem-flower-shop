@@ -1,0 +1,443 @@
+@if (adminRoute) {
+  <section class="admin-page">
+    <header class="admin-header">
+      <a class="brand" href="/" aria-label="CDLEM Florists home">
+        <img src="/images/logo/logobw-removebg-preview.png" alt="CDLEM Florists">
+      </a>
+      <div>
+        <a class="store-link" href="/">View storefront</a>
+        @if (adminAccess() === 'authorized') {
+          <button class="btn small admin-logout" (click)="logout()">Sign out</button>
+        }
+      </div>
+    </header>
+
+    @if (adminAccess() === 'authorized') {
+      <main class="admin-dashboard">
+        <p class="eyebrow">CDLEM Florists · Seller portal</p>
+        <h1>Seller dashboard</h1>
+        <p class="admin-welcome">Signed in as {{ authUser()?.email }}</p>
+        @if (catalogError()) { <p class="form-error" role="alert">{{ catalogError() }}</p> }
+        <div class="admin-stats">
+          <article><span>Catalog products</span><strong>{{ catalog().length }}</strong></article>
+          <article><span>Shop categories</span><strong>{{ categories.length }}</strong></article>
+          <article><span>Popular products</span><strong>{{ popular().length }}</strong></article>
+        </div>
+        <section class="admin-products">
+          <h2>Manage prices and stock</h2>
+          <div class="admin-table-wrap">
+            <table>
+              <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Save</th></tr></thead>
+              <tbody>
+                @for (product of catalog(); track product.name) {
+                  <tr>
+                    <td>{{ product.name }}</td>
+                    <td>{{ product.category }}</td>
+                    <td>
+                      <input class="inventory-input" type="number" min="0" step="0.01"
+                        [attr.name]="'price-' + product.name"
+                        [ngModel]="productDraft(product).price"
+                        (ngModelChange)="updateProductDraft(product, 'price', $event)"
+                        [attr.aria-label]="'Price for ' + product.name">
+                    </td>
+                    <td>
+                      <input class="inventory-input" type="number" min="0" step="1"
+                        [attr.name]="'stock-' + product.name"
+                        [ngModel]="productDraft(product).stock"
+                        (ngModelChange)="updateProductDraft(product, 'stock', $event)"
+                        [attr.aria-label]="'Stock for ' + product.name">
+                    </td>
+                    <td>{{ product.stock === 0 ? 'Out of stock' : product.popular ? 'Popular' : product.recent ? 'New' : 'Active' }}</td>
+                    <td><button class="btn small" [disabled]="savingProduct() === product.name" (click)="saveProduct(product)">
+                      {{ savingProduct() === product.name ? 'Saving…' : 'Save' }}
+                    </button></td>
+                  </tr>
+                  @if (productErrors()[product.name]) {
+                    <tr><td class="product-error" colspan="6" role="alert">{{ productErrors()[product.name] }}</td></tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="admin-orders">
+          <h2>Orders</h2>
+          @if (adminOrdersLoading()) {
+            <p role="status">Loading orders…</p>
+          } @else if (adminOrdersError()) {
+            <p class="form-error" role="alert">{{ adminOrdersError() }}</p>
+          } @else if (!adminOrders().length) {
+            <p class="empty">No customer orders yet.</p>
+          } @else {
+            @for (order of adminOrders(); track order.id) {
+              <article class="admin-order">
+                <header class="admin-order-heading">
+                  <div>
+                    <h3>Order #{{ order.id.slice(0, 8) }} · {{ order.customerName }}</h3>
+                    <p>{{ order.createdAt?.toDate() | date:'medium' }}</p>
+                  </div>
+                  <strong>{{ order.total | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</strong>
+                </header>
+                <p><strong>Delivery address:</strong> {{ order.fullAddress }}</p>
+                <p><strong>Contact:</strong> {{ order.contactNumbers.primary }} / {{ order.contactNumbers.secondary }}</p>
+                <ul class="order-item-list">
+                  @for (item of order.items; track item.productName) {
+                    <li>{{ item.productName }} × {{ item.quantity }} — {{ item.unitPrice | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</li>
+                  }
+                </ul>
+                <div class="order-edit">
+                  <label [attr.for]="'status-' + order.id">Progress
+                    <select [id]="'status-' + order.id" [attr.name]="'status-' + order.id"
+                      [ngModel]="orderDraft(order).status"
+                      (ngModelChange)="updateOrderDraft(order, 'status', $event)">
+                      @for (step of orderStatuses; track step.value) {
+                        <option [value]="step.value">{{ step.label }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label [attr.for]="'duration-' + order.id">Estimated delivery duration
+                    <input [id]="'duration-' + order.id" [attr.name]="'duration-' + order.id" type="text"
+                      maxlength="80" placeholder="e.g. 2 hours"
+                      [ngModel]="orderDraft(order).estimatedDuration"
+                      (ngModelChange)="updateOrderDraft(order, 'estimatedDuration', $event)">
+                  </label>
+                  <button class="btn small" type="button" [disabled]="savingOrder() === order.id" (click)="saveOrder(order)">
+                    {{ savingOrder() === order.id ? 'Saving…' : 'Save order update' }}
+                  </button>
+                </div>
+                @if (orderErrors()[order.id]) {
+                  <p class="form-error" role="alert">{{ orderErrors()[order.id] }}</p>
+                }
+              </article>
+            }
+          }
+        </section>
+      </main>
+    } @else if (adminAccess() === 'checking' || adminAccess() === 'checking-access') {
+      <main class="admin-login"><p role="status">Checking administrator access…</p></main>
+    } @else if (adminAccess() === 'signed-out') {
+      <main class="admin-login">
+        <p class="eyebrow">CDLEM Florists · Seller portal</p>
+        <h1>Administrator sign in</h1>
+        <p>Use the email and password for your enabled Firebase administrator account.</p>
+        <form (submit)="adminLogin($event)">
+          <label>Email
+            <input type="email" name="adminEmail" autocomplete="username" required [(ngModel)]="adminEmail">
+          </label>
+          <label>Password
+            <input type="password" name="adminPassword" autocomplete="current-password" required [(ngModel)]="adminPassword">
+          </label>
+          @if (adminError()) { <p class="form-error" role="alert">{{ adminError() }}</p> }
+          <button class="btn primary full" type="submit">Sign in</button>
+        </form>
+      </main>
+    } @else {
+      <main class="admin-login">
+        <p class="eyebrow">Access restricted</p>
+        <h1>Administrator access required</h1>
+        @if (adminError()) { <p class="form-error" role="alert">{{ adminError() }}</p> }
+        <button class="btn primary" (click)="logout()">Sign out</button>
+      </main>
+    }
+  </section>
+} @else {
+<header class="header" [class.fixed]="fixed()">
+  <a class="brand" href="#top" aria-label="CDLEM Florists home">
+    <img src="/images/logo/logobw-removebg-preview.png" alt="CDLEM Florists">
+  </a>
+  <nav class="nav" aria-label="Main">
+    <a href="#categories">Categories</a>
+    <a href="#products">Shop all</a>
+    <a href="#popular">Popular</a>
+    <a href="#recent">New in</a>
+  </nav>
+  <div class="actions">
+    <button class="icon-btn" (click)="toggleSearch()" [attr.aria-expanded]="searchOpen()" aria-label="Search products">Search</button>
+    <button class="icon-btn" (click)="openModal()" aria-label="Account">Account</button>
+    <button class="cart" type="button" (click)="cartOpen.set(true)"
+    [attr.aria-label]="'Shopping cart, ' + cart() + ' items'">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 4h2l2.2 11.1a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 2-1.6L21 8H6"></path>
+      <circle cx="10" cy="20" r="1"></circle>
+      <circle cx="18" cy="20" r="1"></circle>
+    </svg>
+    <span class="cart-count">{{ cart() }}</span>
+    </button>
+  </div>
+</header>
+
+@if (catalogError()) { <p class="catalog-error" role="alert">{{ catalogError() }}</p> }
+
+@if (searchOpen()) {
+  <section class="search" role="search">
+    <input id="search-input" type="search" placeholder="Search flowers, bouquets and potted flowers"
+           [ngModel]="query()" (ngModelChange)="query.set($event)" aria-label="Search products">
+    <div class="search-controls">
+      <label>Min price
+        <input type="number" min="0" placeholder="Any" [ngModel]="minPrice()" (ngModelChange)="minPrice.set($event)">
+      </label>
+      <label>Max price
+        <input type="number" min="0" placeholder="Any" [ngModel]="maxPrice()" (ngModelChange)="maxPrice.set($event)">
+      </label>
+      <label>Rank by
+        <select [ngModel]="sortOrder()" (ngModelChange)="sortOrder.set($event)">
+          <option value="featured">Featured</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+        </select>
+      </label>
+    </div>
+    @if (query().trim()) {
+      @if (results().length) {
+        <ul class="results" aria-label="Product suggestions">
+          @for (p of results(); track p.name) {
+            <li>
+              @if (p.image) { <img [src]="p.image" [alt]="p.name"> }
+              <span>{{ p.name }}</span>
+              <span>{{ p.price | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</span>
+              <span class="search-stock">{{ p.stock }} in stock</span>
+              <button class="btn small" [disabled]="p.stock === 0" (click)="add(p)">Add</button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="empty">Nothing matches “{{ query() }}” in that price range. Try “rose”, “bouquet” or “potted”.</p>
+      }
+    }
+  </section>
+}
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>Fresh flowers</h1>
+      <p>Cut this morning and wrapped by hand. Order by noon for same-day delivery.</p>
+      <div class="hero-actions">
+        <button class="btn primary" (click)="pick('Flower')">Shop flowers</button>
+        <button class="btn ghost" (click)="pick('Bouquet Flowers')">Shop bouquets</button>
+      </div>
+    </div>
+    <div class="arch" aria-hidden="true">
+      <img src="/images/single_flowers/banner.png" alt="">
+    </div>
+  </section>
+
+  <section id="categories" class="section">
+    <h2>Shop by category</h2>
+    <div class="cats">
+      @for (c of categories; track c.name) {
+        <button class="cat" [class.active]="category() === c.name" (click)="pick(c.name)">
+          <img class="cat-image" [src]="c.image" [alt]="c.name">
+          <strong>{{ c.name }}</strong>
+          <small>{{ c.blurb }}</small>
+        </button>
+      }
+    </div>
+  </section>
+
+  <section id="recent" class="section">
+    <h2>New in</h2>
+    @if (recent().length) {
+      <div class="grid">
+        @for (p of recent(); track p.name) {
+          <article class="card">
+            <div class="thumb" [attr.data-cat]="p.category">
+              @if (p.image) { <img [src]="p.image" [alt]="p.name"> } @else { <span>{{ p.emoji }}</span> }
+            </div>
+            <h3>{{ p.name }}</h3>
+            <p class="stock-label">{{ p.stock === 0 ? 'Out of stock' : p.stock + ' in stock' }}</p>
+            <div class="row"><span class="price">{{ p.price | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</span><button class="btn small" [disabled]="p.stock === 0" (click)="add(p)">Add to cart</button></div>
+          </article>
+        }
+      </div>
+    } @else {
+      <p class="empty">No new products this week. Check back soon.</p>
+    }
+  </section>
+
+  <section id="products" class="section">
+    <div class="head-row">
+      <h2>Shop all flowers</h2>
+      <span class="product-count">{{ shopProducts().length }} products</span>
+    </div>
+    <div class="chips" role="group" aria-label="Filter products by category">
+      <button class="chip" [class.active]="category() === 'All'" [attr.aria-pressed]="category() === 'All'" (click)="category.set('All')">All products</button>
+      @for (c of categories; track c.name) {
+        <button class="chip" [class.active]="category() === c.name" [attr.aria-pressed]="category() === c.name" (click)="category.set(c.name)">{{ c.name }}</button>
+      }
+    </div>
+    <div class="grid">
+      @for (p of shopProducts(); track p.name) {
+        <article class="card">
+          <div class="thumb" [attr.data-cat]="p.category">
+            @if (p.image) { <img [src]="p.image" [alt]="p.name"> } @else { <span>{{ p.emoji }}</span> }
+          </div>
+          <h3>{{ p.name }}</h3>
+          <p class="stock-label">{{ p.stock === 0 ? 'Out of stock' : p.stock + ' in stock' }}</p>
+          <div class="row"><span class="price">{{ p.price | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</span><button class="btn small" [disabled]="p.stock === 0" (click)="add(p)">Add to cart</button></div>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section id="popular" class="section">
+    <h2>Popular right now</h2>
+    <div class="grid">
+      @for (p of popular(); track p.name) {
+        <article class="card">
+          <div class="thumb" [attr.data-cat]="p.category">
+            @if (p.image) { <img [src]="p.image" [alt]="p.name"> } @else { <span>{{ p.emoji }}</span> }
+          </div>
+          <h3>{{ p.name }}</h3>
+          <p class="stock-label">{{ p.stock === 0 ? 'Out of stock' : p.stock + ' in stock' }}</p>
+          <div class="row"><span class="price">{{ p.price | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</span><button class="btn small" [disabled]="p.stock === 0" (click)="add(p)">Add to cart</button></div>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="banner">
+    <div>
+      <h2>Free delivery on orders over ₱50</h2>
+      <p>Pair a bouquet with a planter and the delivery is on us.</p>
+    </div>
+    <button class="btn primary" (click)="pick('All')">See everything</button>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div><strong>CDLEM Florists</strong><p>Flowers, bouquets and potted blooms for every room.</p></div>
+  <div><strong>Shop</strong><p>Flower<br>Bouquet Flowers<br>Potted Flowers</p></div>
+  <div><strong>Visit us</strong><p>12 Garden Street<br>Open daily, 8am to 7pm</p></div>
+</footer>
+
+@if (notice()) { <div class="toast" role="status">{{ notice() }}</div> }
+
+@if (modalOpen()) {
+  <div class="backdrop" (click)="closeAccountModal()">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Account" (click)="$event.stopPropagation()">
+      @if (!profileRequired()) {
+        <button class="close" (click)="closeAccountModal()" aria-label="Close">✕</button>
+      }
+      @if (profileRequired()) {
+        <h2>Complete your profile</h2>
+        <p class="profile-notice">Add your contact details to finish signing in. Your information is saved to your private account profile.</p>
+        <form (submit)="saveProfile($event)">
+          <label>Full name<input type="text" name="fullName" autocomplete="name" required [(ngModel)]="profileName"></label>
+          <label>Full address<textarea name="fullAddress" autocomplete="street-address" rows="3" required [(ngModel)]="fullAddress"></textarea></label>
+          <label>First contact number<input type="tel" name="primaryContact" autocomplete="tel" required [(ngModel)]="primaryContact"></label>
+          <label>Second contact number<input type="tel" name="secondaryContact" required [(ngModel)]="secondaryContact"></label>
+          @if (profileError()) { <p class="form-error" role="alert">{{ profileError() }}</p> }
+          <button class="btn primary full" type="submit" [disabled]="profileSaving()">
+            {{ profileSaving() ? 'Saving…' : 'Save profile' }}
+          </button>
+        </form>
+      } @else if (authUser()) {
+        <h2>Your account</h2>
+        @if (profileStatus() === 'checking') {
+          <p role="status">Loading your profile…</p>
+        } @else if (profileStatus() === 'error') {
+          <p class="form-error" role="alert">{{ profileError() }}</p>
+          <button class="btn primary full" (click)="retryProfileLoad()">Try again</button>
+        } @else {
+          <p>Signed in as {{ profileName || authUser()?.email }}</p>
+          <button class="btn primary full" (click)="logout()">Sign out</button>
+        }
+        @if (!isAdminAccount()) {
+          <section class="account-orders">
+            <h3>Your orders</h3>
+            @if (customerOrdersLoading()) {
+              <p role="status">Loading your orders…</p>
+            } @else if (customerOrdersError()) {
+              <p class="form-error" role="alert">{{ customerOrdersError() }}</p>
+            } @else if (!customerOrders().length) {
+              <p class="empty">You have no orders yet.</p>
+            } @else {
+              @for (order of customerOrders(); track order.id) {
+                <article class="customer-order">
+                  <div class="order-summary">
+                    <div>
+                      <strong>Order #{{ order.id.slice(0, 8) }}</strong>
+                      <small>{{ order.createdAt?.toDate() | date:'medium' }}</small>
+                    </div>
+                    <strong>{{ order.total | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</strong>
+                  </div>
+                  <p class="order-current-status">{{ orderStatusLabel(order.status) }}</p>
+                  <ol class="order-progress" [attr.aria-label]="'Order progress: ' + orderStatusLabel(order.status)">
+                    @for (step of orderStatuses; track step.value; let stepIndex = $index) {
+                      <li [class.complete]="stepIndex <= orderStatusIndex(order.status)" [class.current]="step.value === order.status">
+                        <span class="progress-dot" aria-hidden="true"></span>
+                        <span>{{ step.label }}</span>
+                      </li>
+                    }
+                  </ol>
+                  @if (order.estimatedDuration) {
+                    <p class="order-estimate">Estimated delivery: <strong>{{ order.estimatedDuration }}</strong></p>
+                  } @else {
+                    <p class="order-estimate">The seller will add your delivery estimate soon.</p>
+                  }
+                  <ul class="order-item-list">
+                    @for (item of order.items; track item.productName) {
+                      <li>{{ item.productName }} × {{ item.quantity }}</li>
+                    }
+                  </ul>
+                </article>
+              }
+            }
+          </section>
+        }
+        @if (authError()) { <p class="form-error" role="alert">{{ authError() }}</p> }
+      } @else {
+        <h2>Welcome to CDLEM Florists</h2>
+        <p>Sign in with Google to continue. We’ll ask for your name, full address, and two contact numbers.</p>
+        @if (authError()) { <p class="form-error" role="alert">{{ authError() }}</p> }
+        <button class="btn primary full" (click)="signInWithGoogle()">Sign in with Google</button>
+      }
+    </div>
+  </div>
+}
+
+@if (cartOpen()) {
+  <div class="cart-backdrop" (click)="cartOpen.set(false)">
+    <aside class="cart-panel" role="dialog" aria-modal="true" aria-label="Shopping cart" (click)="$event.stopPropagation()">
+      <div class="cart-heading">
+        <h2>Your cart</h2>
+        <button class="close" type="button" (click)="cartOpen.set(false)" aria-label="Close cart">✕</button>
+      </div>
+      @if (cartLines().length) {
+        <ul class="cart-items">
+          @for (line of cartLines(); track line.product.name) {
+            <li class="cart-item">
+              @if (line.product.image) { <img [src]="line.product.image" [alt]="line.product.name"> }
+              <div class="cart-item-info">
+                <strong>{{ line.product.name }}</strong>
+                <span>{{ line.product.price | currency:'PHP':'symbol':'1.2-2':'en-PH' }} each</span>
+                <div class="quantity-controls">
+                  <button type="button" (click)="changeCartQuantity(line.product.name, -1)" [attr.aria-label]="'Decrease ' + line.product.name">−</button>
+                  <span>{{ line.quantity }}</span>
+                  <button type="button" (click)="changeCartQuantity(line.product.name, 1)" [attr.aria-label]="'Increase ' + line.product.name">+</button>
+                </div>
+              </div>
+              <div class="cart-item-end">
+                <strong>{{ line.product.price * line.quantity | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</strong>
+                <button class="remove-item" type="button" (click)="removeCartItem(line.product.name)">Remove</button>
+              </div>
+            </li>
+          }
+        </ul>
+        <div class="cart-total"><span>Total</span><strong>{{ cartTotal() | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</strong></div>
+      } @else {
+        <p class="empty">Your cart is empty. Add a flower or bouquet to get started.</p>
+      }
+      @if (placeOrderError()) { <p class="form-error" role="alert">{{ placeOrderError() }}</p> }
+      @if (cartLines().length) {
+        <button class="btn primary full place-order" type="button" (click)="placeOrder()" [disabled]="orderSubmitting()">
+          {{ orderSubmitting() ? 'Placing order…' : 'Place order' }}
+        </button>
+        <p class="checkout-note">No payment is collected on this page.</p>
+      }
+    </aside>
+  </div>
+}
+}
