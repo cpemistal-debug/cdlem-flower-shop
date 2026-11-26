@@ -180,13 +180,15 @@ button:disabled { cursor: wait; opacity: .7; }
 @media (max-width: 900px) {
   .hero { grid-template-columns: 1fr; padding-top: 8rem; }
   .arch { width: min(300px, 68%); }
-  .cats { grid-template-columns: 1fr; }
   .footer { grid-template-columns: 1fr 1fr; }
   .banner { padding: 2rem; }
   .admin-stats { grid-template-columns: 1fr; }
   .order-edit { grid-template-columns: 1fr 1fr; }
   .order-edit button { grid-column: 1 / -1; }
   .results li { flex-wrap: wrap; }
+}
+@media (max-width: 1100px) {
+  .cats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
   .search-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; align-items: end; }
@@ -222,6 +224,7 @@ button:disabled { cursor: wait; opacity: .7; }
   .hero-actions { grid-area: actions; flex-wrap: nowrap; justify-content: center; gap: .55rem; }
   .hero-actions .btn { padding-inline: .95rem; white-space: nowrap; }
   .arch { grid-area: banner; }
+  .cats { grid-template-columns: 1fr; }
   .footer { grid-template-columns: 1fr; }
   .grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
   .card { padding: .55rem .55rem .8rem; }
