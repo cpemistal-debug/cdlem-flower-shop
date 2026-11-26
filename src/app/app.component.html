@@ -236,7 +236,7 @@
     <h2>Shop by category</h2>
     <div class="cats">
       @for (c of categories; track c.name) {
-        <button class="cat" [class.active]="category() === c.name" (click)="pick(c.name)">
+        <button class="cat" [attr.aria-pressed]="category() === c.name" (click)="pick(c.name)">
           <img class="cat-image" [src]="c.image" [alt]="c.name">
           <strong>{{ c.name }}</strong>
           <small>{{ c.blurb }}</small>
@@ -272,9 +272,9 @@
     </div>
     <div class="chips" role="group" aria-label="Filter products by category">
       @for (c of categories; track c.name) {
-        <button class="chip" [class.active]="category() === c.name" [attr.aria-pressed]="category() === c.name" (click)="category.set(c.name)">{{ c.name }}</button>
+        <button class="chip" [attr.aria-pressed]="category() === c.name" (click)="category.set(c.name)">{{ c.name }}</button>
       }
-      <button class="chip chip-all" [class.active]="category() === 'All'" [attr.aria-pressed]="category() === 'All'" (click)="category.set('All')">All products</button>
+      <button class="chip chip-all" [attr.aria-pressed]="category() === 'All'" (click)="category.set('All')">All products</button>
     </div>
     <div class="grid">
       @for (p of shopProducts(); track p.name) {
