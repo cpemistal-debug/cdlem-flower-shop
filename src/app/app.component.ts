@@ -18,6 +18,7 @@ import {
   getDocs,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -370,29 +371,69 @@ export class AppComponent implements OnDestroy {
     this.placeOrderError.set('');
     try {
       const orderRef = doc(collection(firestore, 'orders'));
-      await setDoc(orderRef, {
-        customerUid: user.uid,
-        customerName: this.profileName.trim(),
-        fullAddress: this.fullAddress.trim(),
-        contactNumbers: {
-          primary: this.primaryContact.trim(),
-          secondary: this.secondaryContact.trim(),
-        },
-        items: lines.map(({ product, quantity }) => ({
-          productName: product.name,
-          quantity,
-          unitPrice: product.price,
-          image: product.image,
-        })),
-        total: lines.reduce((total, line) => total + line.product.price * line.quantity, 0),
-        status: 'pending',
-        estimatedDuration: '',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      await runTransaction(firestore, async (transaction) => {
+        const productRefs = lines.map(({ product }) => doc(firestore, 'products', product.name));
+        const productSnapshots = await Promise.all(productRefs.map((productRef) => transaction.get(productRef)));
+        const orderItems = lines.map(({ product, quantity }, index) => {
+          const snapshot = productSnapshots[index];
+          if (!snapshot.exists()) {
+            throw new Error(`${product.name} is no longer available.`);
+          }
+
+          const data = snapshot.data();
+          const stock = data['stock'];
+          const price = data['price'];
+          const image = data['image'];
+          if (
+            data['name'] !== product.name
+            || typeof stock !== 'number'
+            || !Number.isInteger(stock)
+            || stock < 0
+            || typeof price !== 'number'
+            || !Number.isFinite(price)
+            || price < 0
+            || typeof image !== 'string'
+          ) {
+            throw new Error(`${product.name} has invalid catalog data. Please contact the shop.`);
+          }
+          if (stock < quantity) {
+            throw new Error(`Only ${stock} of ${product.name} remain in stock.`);
+          }
+
+          return { productName: product.name, quantity, unitPrice: price, image, stock, price };
+        });
+
+        for (const [index, item] of orderItems.entries()) {
+          transaction.update(productRefs[index], {
+            stock: item.stock - item.quantity,
+            lastOrderId: orderRef.id,
+          });
+        }
+
+        transaction.set(orderRef, {
+          customerUid: user.uid,
+          customerName: this.profileName.trim(),
+          fullAddress: this.fullAddress.trim(),
+          contactNumbers: {
+            primary: this.primaryContact.trim(),
+            secondary: this.secondaryContact.trim(),
+          },
+          items: orderItems.map(({ productName, quantity, unitPrice, image }) => ({
+            productName,
+            quantity,
+            unitPrice,
+            image,
+          })),
+          total: orderItems.reduce((total, item) => total + item.price * item.quantity, 0),
+          status: 'pending',
+          estimatedDuration: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
       });
       this.cartItems.set([]);
       this.cartOpen.set(false);
-      this.notice.set('Order placed. Track its progress in your account.');
+      this.notice.set('Order placed and stock reserved. Track its progress in your account.');
       setTimeout(() => this.notice.set(''), 3500);
     } catch (error) {
       this.placeOrderError.set(`Could not place your order: ${this.errorMessage(error)}`);

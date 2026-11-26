@@ -15,6 +15,7 @@ src/environments/firebase-config.generated.ts
 # Firebase local state and logs
 .firebase/
 firestore.rules
+!firestore.rules
 folderpath.txt
 admin.txt
 FIREBASE_GITHUB_DEPLOYMENT.md

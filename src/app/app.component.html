@@ -218,8 +218,8 @@
       <h1>Fresh flowers</h1>
       <p>Cut this morning and wrapped by hand. Order by noon for same-day delivery.</p>
       <div class="hero-actions">
-        <button class="btn primary" (click)="pick('Flower')">Shop flowers</button>
-        <button class="btn ghost" (click)="pick('Bouquet Flowers')">Shop bouquets</button>
+        <button class="btn primary" (click)="pick('Flower')">Flower</button>
+        <button class="btn ghost" (click)="pick('Bouquet Flowers')">Bouquet</button>
       </div>
     </div>
     <div class="arch" aria-hidden="true">
@@ -266,10 +266,10 @@
       <span class="product-count">{{ shopProducts().length }} products</span>
     </div>
     <div class="chips" role="group" aria-label="Filter products by category">
-      <button class="chip" [class.active]="category() === 'All'" [attr.aria-pressed]="category() === 'All'" (click)="category.set('All')">All products</button>
       @for (c of categories; track c.name) {
         <button class="chip" [class.active]="category() === c.name" [attr.aria-pressed]="category() === c.name" (click)="category.set(c.name)">{{ c.name }}</button>
       }
+      <button class="chip chip-all" [class.active]="category() === 'All'" [attr.aria-pressed]="category() === 'All'" (click)="category.set('All')">All products</button>
     </div>
     <div class="grid">
       @for (p of shopProducts(); track p.name) {
@@ -313,7 +313,7 @@
 
 <footer class="footer">
   <div><strong>CDLEM Florists</strong><p>Flowers, bouquets and potted blooms for every room.</p></div>
-  <div><strong>Shop</strong><p>Flower<br>Bouquet Flowers<br>Potted Flowers</p></div>
+  <div><strong>Shop</strong><p>Flower<br>Bouquet Flowers<br>Desk Pots<br>Hanging Pots</p></div>
   <div><strong>Visit us</strong><p>12 Garden Street<br>Open daily, 8am to 7pm</p></div>
 </footer>
 
