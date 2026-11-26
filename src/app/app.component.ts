@@ -253,6 +253,7 @@ export class AppComponent implements OnDestroy {
     this.productsUnsubscribe();
     this.customerOrdersUnsubscribe?.();
     this.adminOrdersUnsubscribe?.();
+    this.setSearchOpen(false);
   }
 
   @HostListener('window:scroll')
@@ -263,12 +264,18 @@ export class AppComponent implements OnDestroy {
   @HostListener('document:keydown.escape')
   onEscape() {
     this.closeAccountModal();
-    this.searchOpen.set(false);
+    this.setSearchOpen(false);
   }
 
   toggleSearch() {
-    this.searchOpen.update((v) => !v);
-    if (this.searchOpen()) setTimeout(() => document.getElementById('search-input')?.focus());
+    const open = !this.searchOpen();
+    this.setSearchOpen(open);
+    if (open) setTimeout(() => document.getElementById('search-input')?.focus());
+  }
+
+  private setSearchOpen(open: boolean) {
+    this.searchOpen.set(open);
+    document.documentElement.classList.toggle('search-open', open);
   }
 
   openModal() {
