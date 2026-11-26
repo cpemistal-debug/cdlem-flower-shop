@@ -522,10 +522,9 @@ export class AppComponent implements OnDestroy {
         transaction.set(orderRef, {
           customerUid: user.uid,
           customerName: this.profileName.trim(),
-          fullAddress: this.fulfillmentMethod() === 'delivery'
-            ? this.fullAddress.trim()
-            : '',
-          fulfillmentMethod: this.fulfillmentMethod(),
+          fullAddress: this.fulfillmentMethod() === 'pickup'
+            ? 'PICKUP - Pinaasa Street, B143, Brgy. Binitawan'
+            : this.fullAddress.trim(),
           contactNumbers: {
             primary: this.primaryContact.trim(),
             secondary: this.secondaryContact.trim(),
@@ -550,6 +549,12 @@ export class AppComponent implements OnDestroy {
           });
         });
       });
+      this.catalog.update((products) => products.map((product) => {
+        const line = lines.find((item) => item.product.name === product.name);
+        return line
+          ? { ...product, stock: Math.max(0, product.stock - line.quantity) }
+          : product;
+      }));
       this.cartItems.set([]);
       this.saveCart();
       this.cartOpen.set(false);
