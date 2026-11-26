@@ -2,44 +2,63 @@
 
 A responsive flower-shop storefront built with Angular.
 
-## Requirements
+## What to install
 
+- Git
 - Node.js 20.19+, 22.12+, or 24+
-- npm (included with Node.js)
+- npm (included with Node.js; no separate install needed)
+- Visual Studio Code (optional)
 
-## Install
+You do not need to install Angular CLI globally; `npm install` installs the
+project's dependencies, including its local Angular CLI.
 
-Open a terminal in the project folder and install the dependencies:
+## Clone and install
 
-```powershell
+In a terminal, run:
+
+```sh
+git clone https://github.com/cpemistal-debug/cdlem-flower-shop.git
+cd cdlem-flower-shop
 npm install
 ```
 
+## Configure Firebase
+
+The app needs Firebase web-app settings to start or build. Create a `.env` file
+in the project root and add the required values from your Firebase project
+(Firebase Console → Project settings → Your apps):
+
+```dotenv
+FIREBASE_API_KEY=your-api-key
+FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_APP_ID=your-app-id
+```
+
+Optional settings are `FIREBASE_DATABASE_URL`, `FIREBASE_STORAGE_BUCKET`,
+`FIREBASE_MESSAGING_SENDER_ID`, and `FIREBASE_MEASUREMENT_ID`. Do not commit
+your `.env` file.
+
 ## Run locally
 
-Start the Angular development server:
+Start the development server:
 
-```powershell
+```sh
 npm start
 ```
 
-Open [http://localhost:4200](http://localhost:4200) in your browser. Keep the terminal open while using the app; press `Ctrl+C` to stop the server.
+Open [http://localhost:4200](http://localhost:4200) in your browser. Keep the
+terminal open while using the app; press `Ctrl+C` to stop the server.
 
 ## Build
 
 Create a production build:
 
-```powershell
+```sh
 npm run build
 ```
 
 The generated files are written to `dist/`.
-
-## Firebase and GitHub deployment
-
-See [FIREBASE_GITHUB_DEPLOYMENT.md](./FIREBASE_GITHUB_DEPLOYMENT.md) for local
-Firebase configuration and instructions for building and deploying with GitHub
-Actions.
 
 ## Notes
 

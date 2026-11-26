@@ -52,3 +52,5 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 firestore.rules
+INSTALL_GIT_AND_NODEJS.txt
+Tutorial.txt
