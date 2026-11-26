@@ -126,6 +126,7 @@ export class AppComponent implements OnDestroy {
   sortOrder = signal<'featured' | 'price-asc' | 'price-desc'>('featured');
   category = signal<Category | 'All'>('All');
   cartItems = signal<CartItem[]>([]);
+  private readonly guestCartKey = 'cdlem_guest_cart';
   cartOpen = signal(false);
   cart = computed(() => this.cartItems().reduce((count, item) => count + item.quantity, 0));
   cartLines = computed(() => {
@@ -230,6 +231,7 @@ export class AppComponent implements OnDestroy {
           this.adminAccess.set('signed-out');
           this.stopCustomerOrders();
           this.stopAdminOrders();
+          this.cartItems.set(this.readGuestCart());
           return;
         }
 
@@ -240,6 +242,7 @@ export class AppComponent implements OnDestroy {
           this.stopAdminOrders();
           this.listenToCustomerOrders(user);
           void this.loadCustomerProfile(user);
+          void this.loadCustomerCart(user);
         }
       },
       (error) => {
@@ -257,6 +260,96 @@ export class AppComponent implements OnDestroy {
     this.customerOrdersUnsubscribe?.();
     this.adminOrdersUnsubscribe?.();
     this.setSearchOpen(false);
+  }
+
+  private readGuestCart(): CartItem[] {
+    try {
+      const stored = JSON.parse(localStorage.getItem(this.guestCartKey) ?? '[]');
+      if (!Array.isArray(stored)) return [];
+      return stored
+        .filter((item): item is CartItem =>
+          typeof item === 'object'
+          && item !== null
+          && typeof item.productName === 'string'
+          && typeof item.quantity === 'number'
+          && Number.isInteger(item.quantity)
+          && item.quantity > 0,
+        )
+        .slice(0, 30);
+    } catch {
+      return [];
+    }
+  }
+
+  private mergeCarts(primary: CartItem[], secondary: CartItem[]): CartItem[] {
+    const merged = new Map(primary.map((item) => [item.productName, item.quantity]));
+    for (const item of secondary) {
+      merged.set(item.productName, (merged.get(item.productName) ?? 0) + item.quantity);
+    }
+    return [...merged].map(([productName, quantity]) => ({ productName, quantity })).slice(0, 30);
+  }
+
+  private saveCart() {
+    const items = this.cartItems();
+    const user = this.authUser();
+    if (!user || this.isAdminAccount()) {
+      try {
+        localStorage.setItem(this.guestCartKey, JSON.stringify(items));
+      } catch {
+        // The cart remains in memory when browser storage is disabled.
+      }
+      return;
+    }
+    try {
+      localStorage.removeItem(this.guestCartKey);
+    } catch {
+      // Ignore browser storage cleanup failures.
+    }
+    void setDoc(doc(firestore, 'users', user.uid, 'cart', 'current'), {
+      items,
+      updatedAt: serverTimestamp(),
+    }).catch((error) => {
+      this.placeOrderError.set(`Could not save your cart: ${this.errorMessage(error)}`);
+    });
+  }
+
+  private async loadCustomerCart(user: User) {
+    try {
+      const cart = await getDoc(doc(firestore, 'users', user.uid, 'cart', 'current'));
+      const firestoreItems: CartItem[] = [];
+      if (cart.exists()) {
+        const items = cart.data()['items'];
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            if (
+              typeof item === 'object'
+              && item !== null
+              && typeof item.productName === 'string'
+              && typeof item.quantity === 'number'
+              && Number.isInteger(item.quantity)
+              && item.quantity > 0
+            ) {
+              firestoreItems.push({ productName: item.productName, quantity: item.quantity });
+            }
+          }
+        }
+      }
+
+      const guestItems = this.readGuestCart();
+      const merged = guestItems.length
+        ? this.mergeCarts(firestoreItems, guestItems)
+        : firestoreItems;
+      this.cartItems.set(merged);
+      if (guestItems.length) {
+        localStorage.removeItem(this.guestCartKey);
+      }
+      await setDoc(doc(firestore, 'users', user.uid, 'cart', 'current'), {
+        items: merged,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      this.placeOrderError.set(`Could not load your saved cart: ${this.errorMessage(error)}`);
+    }
   }
 
   @HostListener('window:scroll')
@@ -328,6 +421,7 @@ export class AppComponent implements OnDestroy {
         ? items.map((item) => item.productName === p.name ? { ...item, quantity: item.quantity + 1 } : item)
         : [...items, { productName: p.name, quantity: 1 }];
     });
+    this.saveCart();
     this.notice.set('Added to cart');
     setTimeout(() => this.notice.set(''), 2200);
   }
@@ -346,10 +440,12 @@ export class AppComponent implements OnDestroy {
     this.cartItems.update((items) => items
       .map((item) => item.productName === productName ? { ...item, quantity: item.quantity + change } : item)
       .filter((item) => item.quantity > 0));
+    this.saveCart();
   }
 
   removeCartItem(productName: string) {
     this.cartItems.update((items) => items.filter((item) => item.productName !== productName));
+    this.saveCart();
   }
 
   async placeOrder() {
@@ -454,6 +550,7 @@ export class AppComponent implements OnDestroy {
         });
       });
       this.cartItems.set([]);
+      this.saveCart();
       this.cartOpen.set(false);
       this.notice.set('Order placed');
       setTimeout(() => this.notice.set(''), 3500);
