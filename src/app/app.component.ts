@@ -18,6 +18,7 @@ import {
   getDocs,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -487,42 +488,68 @@ export class AppComponent implements OnDestroy {
     this.placeOrderError.set('');
     try {
       const orderRef = doc(collection(firestore, 'orders'));
-      const orderItems = lines.map(({ product, quantity }) => ({
-        productName: product.name,
-        quantity,
-        unitPrice: product.price,
-        image: product.image,
-      }));
-      const commonOrder = {
-        customerUid: user.uid,
-        customerName: this.profileName.trim(),
-        fullAddress: this.fulfillmentMethod() === 'pickup'
-          ? 'PICKUP - Pinaasa Street, B143, Brgy. Binitawan'
-          : this.fullAddress.trim(),
-        contactNumbers: {
-          primary: this.primaryContact.trim(),
-          secondary: this.secondaryContact.trim(),
-        },
-        items: orderItems,
-        total: orderItems.reduce((total, item) => total + item.unitPrice * item.quantity, 0),
-        status: 'pending',
-        estimatedDuration: '',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-      try {
-        await setDoc(orderRef, commonOrder);
-      } catch (legacyError) {
-        await setDoc(orderRef, {
-          ...commonOrder,
-          fullAddress: this.fulfillmentMethod() === 'pickup'
-            ? ''
-            : commonOrder.fullAddress,
-          fulfillmentMethod: this.fulfillmentMethod(),
-        }).catch((fulfillmentError) => {
-          throw legacyError || fulfillmentError;
+      await runTransaction(firestore, async (transaction) => {
+        const productRefs = lines.map(({ product }) => doc(firestore, 'products', product.name));
+        const snapshots = await Promise.all(productRefs.map((ref) => transaction.get(ref)));
+        const orderItems = snapshots.map((snapshot, index) => {
+          const line = lines[index];
+          if (!snapshot.exists()) {
+            throw new Error(`${line.product.name} is no longer available.`);
+          }
+          const data = snapshot.data();
+          const stock = data['stock'];
+          const price = data['price'];
+          const image = data['image'];
+          if (
+            data['name'] !== line.product.name
+            || !Number.isInteger(stock)
+            || stock < line.quantity
+            || typeof price !== 'number'
+            || price < 0
+            || typeof image !== 'string'
+          ) {
+            throw new Error(`Stock or catalog data is invalid for ${line.product.name}.`);
+          }
+          return {
+            productName: line.product.name,
+            quantity: line.quantity,
+            unitPrice: price,
+            image,
+            stock,
+          };
         });
-      }
+
+        transaction.set(orderRef, {
+          customerUid: user.uid,
+          customerName: this.profileName.trim(),
+          fullAddress: this.fulfillmentMethod() === 'delivery'
+            ? this.fullAddress.trim()
+            : '',
+          fulfillmentMethod: this.fulfillmentMethod(),
+          contactNumbers: {
+            primary: this.primaryContact.trim(),
+            secondary: this.secondaryContact.trim(),
+          },
+          items: orderItems.map(({ productName, quantity, unitPrice, image }) => ({
+            productName,
+            quantity,
+            unitPrice,
+            image,
+          })),
+          total: orderItems.reduce((total, item) => total + item.unitPrice * item.quantity, 0),
+          status: 'pending',
+          estimatedDuration: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        orderItems.forEach((item, index) => {
+          transaction.update(productRefs[index], {
+            stock: item.stock - item.quantity,
+            lastOrderId: orderRef.id,
+          });
+        });
+      });
       this.cartItems.set([]);
       this.saveCart();
       this.cartOpen.set(false);
