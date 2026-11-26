@@ -15,6 +15,8 @@
 html { scroll-behavior: smooth; }
 html.search-open, html.search-open body { overflow: hidden; }
 html.search-open { overscroll-behavior: none; }
+html.modal-open, html.modal-open body { overflow: hidden; }
+html.modal-open { overscroll-behavior: none; }
 body { font-family: 'Poppins', system-ui, sans-serif; color: var(--ink); background: linear-gradient(135deg, #fffaf7 0%, #f7edf2 55%, #edf4eb 100%); line-height: 1.6; }
 button, input { font: inherit; }
 button { cursor: pointer; }

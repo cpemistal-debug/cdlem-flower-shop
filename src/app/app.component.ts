@@ -260,6 +260,7 @@ export class AppComponent implements OnDestroy {
     this.customerOrdersUnsubscribe?.();
     this.adminOrdersUnsubscribe?.();
     this.setSearchOpen(false);
+    this.setAccountScrollLock(false);
   }
 
   private readGuestCart(): CartItem[] {
@@ -389,10 +390,18 @@ export class AppComponent implements OnDestroy {
     this.authError.set('');
     this.profileError.set('');
     this.modalOpen.set(true);
+    this.setAccountScrollLock(true);
   }
 
   closeAccountModal() {
-    if (!this.profileRequired()) this.modalOpen.set(false);
+    if (!this.profileRequired()) {
+      this.modalOpen.set(false);
+      this.setAccountScrollLock(false);
+    }
+  }
+
+  private setAccountScrollLock(open: boolean) {
+    document.documentElement.classList.toggle('modal-open', open);
   }
 
   pick(c: Category | 'All') {
@@ -477,6 +486,7 @@ export class AppComponent implements OnDestroy {
       this.cartOpen.set(false);
       this.profileRequired.set(true);
       this.modalOpen.set(true);
+      this.setAccountScrollLock(true);
       this.profileError.set('Complete your customer profile before placing an order.');
       return;
     }
@@ -736,6 +746,7 @@ export class AppComponent implements OnDestroy {
       this.profileRequired.set(false);
       this.profileStatus.set('complete');
       this.modalOpen.set(false);
+      this.setAccountScrollLock(false);
       this.notice.set('Your profile has been saved.');
       setTimeout(() => this.notice.set(''), 2200);
     } catch (error) {
@@ -761,6 +772,7 @@ export class AppComponent implements OnDestroy {
     try {
       await signOut(firebaseAuth);
       this.modalOpen.set(false);
+      this.setAccountScrollLock(false);
     } catch (error) {
       const message = this.errorMessage(error);
       if (this.adminRoute) this.adminError.set(message);
@@ -790,6 +802,7 @@ export class AppComponent implements OnDestroy {
         this.profileRequired.set(false);
         this.profileStatus.set('complete');
         this.modalOpen.set(false);
+        this.setAccountScrollLock(false);
         return;
       }
 
@@ -818,6 +831,7 @@ export class AppComponent implements OnDestroy {
       this.profileRequired.set(true);
       this.profileStatus.set('required');
       this.modalOpen.set(true);
+      this.setAccountScrollLock(true);
     } catch (error) {
       this.profileRequired.set(false);
       this.profileStatus.set('error');
