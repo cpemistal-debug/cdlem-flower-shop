@@ -267,6 +267,17 @@ export class AppComponent implements OnDestroy {
     this.setSearchOpen(false);
   }
 
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (!this.searchOpen()) return;
+
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest('.search, button[aria-label="Search products"]')) return;
+
+    this.setSearchOpen(false);
+  }
+
   toggleSearch() {
     const open = !this.searchOpen();
     this.setSearchOpen(open);

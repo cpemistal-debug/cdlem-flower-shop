@@ -10,11 +10,8 @@
   --radius: 14px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-* { scrollbar-color: var(--leaf) var(--mist); scrollbar-width: thin; }
-*::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-track { background: var(--mist); border-radius: 999px; }
-*::-webkit-scrollbar-thumb { border: 2px solid var(--mist); border-radius: 999px; background: var(--leaf); }
-*::-webkit-scrollbar-thumb:hover { background: #294b2e; }
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; }
 html { scroll-behavior: smooth; }
 html.search-open, html.search-open body { overflow: hidden; }
 html.search-open { overscroll-behavior: none; }
