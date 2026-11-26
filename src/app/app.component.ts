@@ -41,6 +41,7 @@ const ORDER_STATUSES = [
 ] as const;
 
 type OrderStatus = (typeof ORDER_STATUSES)[number]['value'];
+type FulfillmentMethod = 'delivery' | 'pickup';
 
 interface CartItem {
   productName: string;
@@ -59,6 +60,7 @@ interface ShopOrder {
   customerUid: string;
   customerName: string;
   fullAddress: string;
+  fulfillmentMethod: FulfillmentMethod;
   contactNumbers: { primary: string; secondary: string };
   items: OrderItem[];
   total: number;
@@ -153,6 +155,7 @@ export class AppComponent implements OnDestroy {
   orderErrors = signal<Record<string, string>>({});
   orderSubmitting = signal(false);
   placeOrderError = signal('');
+  fulfillmentMethod = signal<FulfillmentMethod>('delivery');
   isAdminAccount = signal(false);
   notice = signal('');
   authUser = signal<User | null>(null);
@@ -325,7 +328,7 @@ export class AppComponent implements OnDestroy {
         ? items.map((item) => item.productName === p.name ? { ...item, quantity: item.quantity + 1 } : item)
         : [...items, { productName: p.name, quantity: 1 }];
     });
-    this.notice.set(`${p.name} added to your cart`);
+    this.notice.set('Added to cart');
     setTimeout(() => this.notice.set(''), 2200);
   }
 
@@ -371,7 +374,7 @@ export class AppComponent implements OnDestroy {
       this.profileRequired()
       || this.profileStatus() !== 'complete'
       || !this.profileName.trim()
-      || !this.fullAddress.trim()
+      || (this.fulfillmentMethod() === 'delivery' && !this.fullAddress.trim())
       || !this.primaryContact.trim()
       || !this.secondaryContact.trim()
     ) {
@@ -431,7 +434,8 @@ export class AppComponent implements OnDestroy {
         transaction.set(orderRef, {
           customerUid: user.uid,
           customerName: this.profileName.trim(),
-          fullAddress: this.fullAddress.trim(),
+          fullAddress: this.fulfillmentMethod() === 'delivery' ? this.fullAddress.trim() : '',
+          fulfillmentMethod: this.fulfillmentMethod(),
           contactNumbers: {
             primary: this.primaryContact.trim(),
             secondary: this.secondaryContact.trim(),
@@ -451,7 +455,7 @@ export class AppComponent implements OnDestroy {
       });
       this.cartItems.set([]);
       this.cartOpen.set(false);
-      this.notice.set('Order placed and stock reserved. Track its progress in your account.');
+      this.notice.set('Order placed');
       setTimeout(() => this.notice.set(''), 3500);
     } catch (error) {
       this.placeOrderError.set(`Could not place your order: ${this.errorMessage(error)}`);
@@ -832,12 +836,15 @@ export class AppComponent implements OnDestroy {
     ) {
       return null;
     }
+    const fulfillmentMethod: FulfillmentMethod =
+      data['fulfillmentMethod'] === 'pickup' ? 'pickup' : 'delivery';
 
     return {
       id,
       customerUid: data['customerUid'],
       customerName: data['customerName'],
       fullAddress: data['fullAddress'],
+      fulfillmentMethod,
       contactNumbers: {
         primary: contactNumbers['primary'],
         secondary: contactNumbers['secondary'],

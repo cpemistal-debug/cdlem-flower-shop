@@ -78,7 +78,12 @@
                   </div>
                   <strong>{{ order.total | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</strong>
                 </header>
-                <p><strong>Delivery address:</strong> {{ order.fullAddress }}</p>
+                @if (order.fulfillmentMethod === 'pickup') {
+                  <p><strong>Pickup location:</strong> Pinaasa Street, B143, Brgy. Binitawan</p>
+                } @else {
+                  <p><strong>Delivery address:</strong> {{ order.fullAddress }}</p>
+                }
+                <p><strong>Fulfillment:</strong> {{ order.fulfillmentMethod === 'pickup' ? 'Pick up' : 'Delivery' }}</p>
                 <p><strong>Contact:</strong> {{ order.contactNumbers.primary }} / {{ order.contactNumbers.secondary }}</p>
                 <ul class="order-item-list">
                   @for (item of order.items; track item.productName) {
@@ -95,7 +100,7 @@
                       }
                     </select>
                   </label>
-                  <label [attr.for]="'duration-' + order.id">Estimated delivery duration
+                  <label [attr.for]="'duration-' + order.id">{{ order.fulfillmentMethod === 'pickup' ? 'Estimated pickup duration' : 'Estimated delivery duration' }}
                     <input [id]="'duration-' + order.id" [attr.name]="'duration-' + order.id" type="text"
                       maxlength="80" placeholder="e.g. 2 hours"
                       [ngModel]="orderDraft(order).estimatedDuration"
@@ -369,6 +374,7 @@
                     <strong>{{ order.total | currency:'PHP':'symbol':'1.2-2':'en-PH' }}</strong>
                   </div>
                   <p class="order-current-status">{{ orderStatusLabel(order.status) }}</p>
+                  <p class="order-estimate"><strong>Fulfillment:</strong> {{ order.fulfillmentMethod === 'pickup' ? 'Pick up at Pinaasa Street, B143, Brgy. Binitawan' : 'Delivery to your saved address' }}</p>
                   <ol class="order-progress" [attr.aria-label]="'Order progress: ' + orderStatusLabel(order.status)">
                     @for (step of orderStatuses; track step.value; let stepIndex = $index) {
                       <li [class.complete]="stepIndex <= orderStatusIndex(order.status)" [class.current]="step.value === order.status">
@@ -378,9 +384,9 @@
                     }
                   </ol>
                   @if (order.estimatedDuration) {
-                    <p class="order-estimate">Estimated delivery: <strong>{{ order.estimatedDuration }}</strong></p>
+                    <p class="order-estimate">{{ order.fulfillmentMethod === 'pickup' ? 'Estimated pickup time' : 'Estimated delivery' }}: <strong>{{ order.estimatedDuration }}</strong></p>
                   } @else {
-                    <p class="order-estimate">The seller will add your delivery estimate soon.</p>
+                    <p class="order-estimate">The seller will add your {{ order.fulfillmentMethod === 'pickup' ? 'pickup' : 'delivery' }} estimate soon.</p>
                   }
                   <ul class="order-item-list">
                     @for (item of order.items; track item.productName) {
@@ -437,6 +443,21 @@
       }
       @if (placeOrderError()) { <p class="form-error" role="alert">{{ placeOrderError() }}</p> }
       @if (cartLines().length) {
+        <fieldset class="fulfillment-options">
+          <legend>How would you like to receive your order?</legend>
+          <label>
+            <input type="radio" name="fulfillment" value="delivery"
+              [checked]="fulfillmentMethod() === 'delivery'"
+              (change)="fulfillmentMethod.set('delivery')">
+            <span><strong>For delivery</strong><small>We deliver to your saved address.</small></span>
+          </label>
+          <label>
+            <input type="radio" name="fulfillment" value="pickup"
+              [checked]="fulfillmentMethod() === 'pickup'"
+              (change)="fulfillmentMethod.set('pickup')">
+            <span><strong>For pick up</strong><small>Pinaasa Street, B143, Brgy. Binitawan</small></span>
+          </label>
+        </fieldset>
         <button class="btn primary full place-order" type="button" (click)="placeOrder()" [disabled]="orderSubmitting()">
           {{ orderSubmitting() ? 'Placing order…' : 'Place order' }}
         </button>
